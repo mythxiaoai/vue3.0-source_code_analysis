@@ -1,0 +1,102 @@
+<html lang="en">
+
+<head>
+    <meta charset="UTF-8">
+    <meta http-equiv="X-UA-Compatible" content="IE=edge">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Document</title>
+    <style>
+        * {
+            padding: 0;
+            margin: 0;
+        }
+    </style>
+</head>
+
+<body>
+    <div id="app"></div>
+    <script type="text/x-template" id="chart">
+        <bar-chart :data="chartData"></bar-chart>
+    </script>
+    <script src="../dist/vue.global.js"></script>
+    <script>
+        const { createRenderer } = Vue;
+        const render = createRenderer({
+            //重写渲染器
+            createElement(tag) {
+                return { tag }
+            },
+            parentNode(node){
+                return node.parentNode
+            },
+            nextSibling(){
+                return null
+            },
+            //属性赋值
+            patchProp(el, key, prevValue, nextValue) {
+                el[key] = nextValue;
+            },
+            insert(child, parent) {
+                if (parent.nodeType === 1) {
+                    //parent就是canvas
+                    draw(child)
+                }
+            }
+        })
+
+        let canvas, ctx;
+        function draw(el, noClear) {
+            if (!noClear) {
+                ctx.clearRect(0, 0, canvas.width, canvas.height);
+            }
+            if (el.tag == 'bar-chart') {
+                const { data } = el;
+                console.log(data);
+                const barWidth = canvas.width / 10,
+                    gap = 20,//间隙
+                    paddingLeft = (canvas.width - (barWidth + gap) * data.length - gap) / 2,
+                    paddingBottom = 0;
+                //柱状图
+                data.forEach(({ title, count, color }, index) => {
+                    const x = paddingLeft + index * (barWidth + gap)
+                    const y = canvas.height - paddingBottom - count;
+                    ctx.fillStyle = color;
+                    ctx.fillRect(x, y, barWidth, count);
+                });
+            }
+            //递归
+            el.childs && el.childs.forEach(child => draw(child, true));
+        }
+
+        function createCanvasApp(APP) {
+            //重写挂在方法,把虚拟dom的数据挂在到canvas上渲染
+            const app = render.createApp(APP);
+            const mount = app.mount
+            app.mount = function (sel) {
+                canvas = document.createElement("canvas");
+                canvas.width = window.innerWidth;
+                canvas.height = window.innerHeight;
+                document.querySelector(sel).appendChild(canvas);
+                ctx = canvas.getContext("2d");
+                mount(canvas)
+            }
+            return app
+        }
+
+        createCanvasApp({
+            template: "#chart",
+            data() {
+                return {
+                    chartData: [
+                        { title: "青铜", "count": 200, color: "brown" },
+                        { title: "钻石", "count": 300, color: "skyblue" },
+                        { title: "星耀", "count": 100, color: "purple" },
+                        { title: "王者", "count": 50, color: "gold" },
+                    ]
+                }
+            }
+        }).mount("#app")
+    </script>
+</body>
+
+</html>
